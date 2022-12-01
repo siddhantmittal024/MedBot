@@ -1,6 +1,8 @@
+from datetime import datetime
 from sklearn.tree import DecisionTreeClassifier, _tree
 import warnings
 import csv
+from typing import List
 from sklearn.svm import SVC
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import train_test_split
@@ -9,45 +11,51 @@ from sklearn import preprocessing
 import pyttsx3
 import pandas as pd
 import re
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
-
+import json
 app = FastAPI()
 
-html = """
-<!DOCTYPE html>
-<html>
-    <head>
-        <title>Chat</title>
-    </head>
-    <body>
-        <h1>WebSocket Chat</h1>
-        <form action="" onsubmit="sendMessage(event)">
-            <input type="text" id="messageText" autocomplete="off"/>
-            <button>Send</button>
-        </form>
-        <ul id='messages'>
-        </ul>
-        <script>
-            var ws = new WebSocket("ws://localhost:8000/ws");
-            ws.onmessage = function(event) {
-                var messages = document.getElementById('messages')
-                var message = document.createElement('li')
-                var content = document.createTextNode(event.data)
-                message.appendChild(content)
-                messages.appendChild(message)
-            };
-            function sendMessage(event) {
-                var input = document.getElementById("messageText")
-                ws.send(input.value)
-                input.value = ''
-                event.preventDefault()
-            }
-        </script>
-    </body>
-</html>
-"""
+# html = """
+# <!DOCTYPE html>
+# <html>
+#     <head>
+#         <title>Chat</title>
+#     </head>
+#     <body>
+#         <h1>WebSocket Chat</h1>
+#         <form action="" onsubmit="sendMessage(event)">
+#             <input type="text" id="messageText" autocomplete="off"/>
+#             <button>Send</button>
+#         </form>
+#         <ul id='messages'>
+
+#         </ul>
+#         <script>
+#             var ws = new WebSocket("ws://localhost:8000/ws");
+#             ws.onmessage = function(event) {
+#                 var messages = document.getElementById('messages')
+#                 var message = document.createElement('li')
+#                 var content = document.createTextNode(event.data)
+#                 message.appendChild(content)
+#                 messages.appendChild(message)
+#             };
+#             function sendMessage(event) {
+#                 var input = document.getElementById("messageText")
+#                 ws.send(input.value)
+#                 var messages = document.getElementById('messages')
+#                 var message = document.createElement('li')
+#                 var content = document.createTextNode(input.value)
+#                 message.appendChild(content)
+#                 messages.appendChild(message)
+#                 input.value = ''
+#                 event.preventDefault()
+#             }
+#         </script>
+#     </body>
+# </html>
+# """
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -59,7 +67,6 @@ cols = cols[:-1]
 x = training[cols]
 y = training['prognosis']
 y1 = y
-
 
 reduced_data = training.groupby(training['prognosis']).max()
 
@@ -209,15 +216,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def send_personal_message(self, message: str, websocket: WebSocket):
+        await websocket.send(message)
+
+    async def send(self, message: str):
+        for connection in self.active_connections:
+            await connection.send(message)
+
+
+manager = ConnectionManager()
+
+
 @app.get("/")
 async def get():
-    return HTMLResponse(html)
+    return "HOME"
 
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+@app.websocket("/ws/{client_id}")
+async def websocket_endpoint(websocket: WebSocket, client_id: int):
     await websocket.accept()
-
+    # await manager.connect(websocket)
+    
     tree_ = clf.tree_
     feature_name = [
         cols[i] if i != _tree.TREE_UNDEFINED else "undefined!"
@@ -226,20 +257,20 @@ async def websocket_endpoint(websocket: WebSocket):
 
     chk_dis = ",".join(cols).split(",")
     symptoms_present = []
-
-    await websocket.send_text("Bot says hello!")
-    await websocket.send_text("Enter the symptom you are experiencing..")
     while True:
-        # data = await websocket.receive_text()
+        await websocket.send_text("Bot says hello!")
+
+        await websocket.send_text("Enter the symptom you are experiencing..")
+            # data = await websocket.receive_text()
         while True:
             symptom = await websocket.receive_text()
             conf, cnf_dis = check_pattern(chk_dis, symptom)
             if conf == 1:
-                await websocket.send_text(f"searches related to input:\n")
+                await websocket.send_text(("searches related to input "))
                 for num, it in enumerate(cnf_dis):
-                    await websocket.send_text(str(num)+")"+str(it))
+                    await websocket.send_text((str(num)+")"+str(it)))
                 if num != 0:
-                    await websocket.send_text(f"Select the one you meant (0 - {num}):  ")
+                    await websocket.send_text(("Select the one you meant (0 - {num}):"))
                     conf_inp = await websocket.receive_text()
                 else:
                     conf_inp = 0
@@ -249,9 +280,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 break
 
             else:
-                await websocket.send_text("Enter valid symptom..")
+                await websocket.send_text(("Enter valid symptom.."))
 
-        await websocket.send_text(f"Okay. From how many days ? :")
+        await websocket.send_text(("Okay. From how many days ? :"))
 
         while True:
             num_days = await websocket.receive_text()
@@ -259,7 +290,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 print(num_days)
                 break
             else:
-                await websocket.send_text(f"Enter valid input.")
+                await websocket.send_text(("Enter valid input."))
         # print("exited loop")
 
         async def recurse(node, depth):
@@ -284,37 +315,38 @@ async def websocket_endpoint(websocket: WebSocket):
                 symptoms_given = red_cols[reduced_data.loc[present_disease].values[0].nonzero(
                 )]
 
-                await websocket.send_text(f"Are you experiencing any ")
+                await websocket.send_text(("Are you experiencing any "))
                 symptoms_exp = []
                 for syms in list(symptoms_given):
                     inp = ""
-                    await websocket.send_text(syms + "? : ")
+                    await websocket.send_text((syms + "? : "))
                     while True:
                         inp = await websocket.receive_text()
                         if (inp == "yes" or inp == "no"):
                             break
                         else:
-                            await websocket.send_text("provide proper answers i.e. (yes/no) : ")
+                            await websocket.send_text(("provide proper answers i.e. (yes/no) : "))
                     if (inp == "yes"):
                         symptoms_exp.append(syms)
 
                 second_prediction = sec_predict(symptoms_exp)
                 print(symptoms_exp)
-                await websocket.send_text(calc_condition(symptoms_exp, int(num_days)))
+                await websocket.send_text((calc_condition(symptoms_exp, int(num_days))))
                 if (present_disease[0] == second_prediction[0]):
-                    await websocket.send_text("You may have " + present_disease[0])
+                    await websocket.send_text(("You may have " + present_disease[0]))
                     # print(description_list[present_disease[0]])
-                    await websocket.send_text(description_list[present_disease[0]])
+                    await websocket.send_text((description_list[present_disease[0]]))
                 else:
-                    await websocket.send_text("You may have " +
-                                              present_disease[0] + " or " + second_prediction[0])
-                    await websocket.send_text(description_list[present_disease[0]])
-                    await websocket.send_text(description_list[second_prediction[0]])
+                    await websocket.send_text(("You may have " +
+                                                present_disease[0] + " or " + second_prediction[0]))
+                    await websocket.send_text((description_list[present_disease[0]]))
+                    await websocket.send_text((description_list[second_prediction[0]]))
 
                 precution_list = precautionDictionary[present_disease[0]]
-                await websocket.send_text("Take following measures : ")
+                await websocket.send_text(("Take following measures : "))
                 for i, j in enumerate(precution_list):
-                    await websocket.send_text(str(i+1)+")"+j)
+                    await websocket.send_text((str(i+1)+")"+j))
 
         await recurse(0, 1)
         break
+       
