@@ -217,38 +217,15 @@ app.add_middleware(
 )
 
 
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: List[WebSocket] = []
-
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
-
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
-
-    async def send_personal_message(self, message: str, websocket: WebSocket):
-        await websocket.send(message)
-
-    async def send(self, message: str):
-        for connection in self.active_connections:
-            await connection.send(message)
-
-
-manager = ConnectionManager()
-
-
 @app.get("/")
 async def get():
     return "HOME"
 
 
-@app.websocket("/ws/{client_id}")
-async def websocket_endpoint(websocket: WebSocket, client_id: int):
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     # await manager.connect(websocket)
-    
     tree_ = clf.tree_
     feature_name = [
         cols[i] if i != _tree.TREE_UNDEFINED else "undefined!"
@@ -257,20 +234,21 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int):
 
     chk_dis = ",".join(cols).split(",")
     symptoms_present = []
-    while True:
-        await websocket.send_text("Bot says hello!")
+    await websocket.send_text(json.dumps("Bot says hello!"))
 
-        await websocket.send_text("Enter the symptom you are experiencing..")
-            # data = await websocket.receive_text()
+    await websocket.send_text(json.dumps("Enter the symptom you are experiencing.."))
+
+    while True:
+        # data = await websocket.receive_text()
         while True:
             symptom = await websocket.receive_text()
             conf, cnf_dis = check_pattern(chk_dis, symptom)
             if conf == 1:
-                await websocket.send_text(("searches related to input "))
+                await websocket.send_text(json.dumps("searches related to input"))
                 for num, it in enumerate(cnf_dis):
-                    await websocket.send_text((str(num)+")"+str(it)))
+                    await websocket.send_text(json.dumps("some text" + str(num)+ "." + (it)))
                 if num != 0:
-                    await websocket.send_text(("Select the one you meant (0 - {num}):"))
+                    await websocket.send_text(json.dumps("Select the one you meant (0 - " + str(num) + "):"))
                     conf_inp = await websocket.receive_text()
                 else:
                     conf_inp = 0
@@ -280,9 +258,9 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int):
                 break
 
             else:
-                await websocket.send_text(("Enter valid symptom.."))
+                await websocket.send_text(json.dumps("Enter valid symptom.."))
 
-        await websocket.send_text(("Okay. From how many days ? :"))
+        await websocket.send_text(json.dumps("Okay. From how many days ? :"))
 
         while True:
             num_days = await websocket.receive_text()
@@ -290,7 +268,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int):
                 print(num_days)
                 break
             else:
-                await websocket.send_text(("Enter valid input."))
+                await websocket.send_text(json.dumps("Enter valid input."))
         # print("exited loop")
 
         async def recurse(node, depth):
@@ -315,17 +293,17 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int):
                 symptoms_given = red_cols[reduced_data.loc[present_disease].values[0].nonzero(
                 )]
 
-                await websocket.send_text(("Are you experiencing any "))
+                await websocket.send_text(json.dumps("Are you experiencing any "))
                 symptoms_exp = []
                 for syms in list(symptoms_given):
                     inp = ""
-                    await websocket.send_text((syms + "? : "))
+                    await websocket.send_text(json.dumps(syms + "? : "))
                     while True:
                         inp = await websocket.receive_text()
                         if (inp == "yes" or inp == "no"):
                             break
                         else:
-                            await websocket.send_text(("provide proper answers i.e. (yes/no) : "))
+                            await websocket.send_text(json.dumps("provide proper answers i.e. (yes/no) : "))
                     if (inp == "yes"):
                         symptoms_exp.append(syms)
 
@@ -333,20 +311,19 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int):
                 print(symptoms_exp)
                 await websocket.send_text((calc_condition(symptoms_exp, int(num_days))))
                 if (present_disease[0] == second_prediction[0]):
-                    await websocket.send_text(("You may have " + present_disease[0]))
+                    await websocket.send_text(json.dumps("You may have " + present_disease[0]))
                     # print(description_list[present_disease[0]])
-                    await websocket.send_text((description_list[present_disease[0]]))
+                    await websocket.send_text(json.dumps(description_list[present_disease[0]]))
                 else:
-                    await websocket.send_text(("You may have " +
-                                                present_disease[0] + " or " + second_prediction[0]))
-                    await websocket.send_text((description_list[present_disease[0]]))
-                    await websocket.send_text((description_list[second_prediction[0]]))
+                    await websocket.send_text(json.dumps("You may have " +
+                                                         present_disease[0] + " or " + second_prediction[0]))
+                    await websocket.send_text(json.dumps(description_list[present_disease[0]]))
+                    await websocket.send_text(json.dumps(description_list[second_prediction[0]]))
 
                 precution_list = precautionDictionary[present_disease[0]]
-                await websocket.send_text(("Take following measures : "))
+                await websocket.send_text(json.dumps("Take following measures : "))
                 for i, j in enumerate(precution_list):
-                    await websocket.send_text((str(i+1)+")"+j))
+                    await websocket.send_text(json.dumps(str(i+1)+")"+j))
 
         await recurse(0, 1)
         break
-       
