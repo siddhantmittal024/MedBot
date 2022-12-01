@@ -6,42 +6,47 @@ function App() {
   const [message, setMessage] = useState([]);
   const [messages, setMessages] = useState([]);
   const [websckt, setWebsckt] = useState();
-  const [clientId, setClienId] = useState(
-    Math.floor(new Date().getTime() / 1000)
-  );
 
   useEffect(() => {
-    const url = "ws://localhost:8000/ws/" + clientId;
+    const url = "ws://localhost:8000/ws";
     const ws = new WebSocket(url);
+    setWebsckt(ws);
+    //return () => ws.close();
+  }, []);
 
-    // ws.onopen = (event) => {
-    //   ws.send("Connect");
-    // };
-
-    ws.onmessage = (e) => {
-      const message = (e.data);
+  if (websckt != undefined) {
+    websckt.onmessage = async (e) => {
+      const message = {
+        message: JSON.parse(e.data),
+        author: "bot",
+      };
       // console.log(message);
       setMessages([...messages, message]);
     };
+  }
 
-    setWebsckt(ws);
-    // return () => ws.close();
-  }, []);
+  console.log("ALL MESSAGES:", messages);
 
-  console.log(messages);
+  const sendMessage = async () => {
+    //const msg = message;
+    const msg = {
+      message: message,
+      author: "user",
+    };
 
-  const sendMessage = (e) => {
-    const msg = message;
-    websckt.send(msg);
+    setMessages([...messages, msg]);
+
+    await websckt.send(message);
+
     // recieve message every send message
-    //websckt.onmessage = (e) => {
-      //const message = (e.data);
-      setMessages([...messages, msg]);
-    //};
-    // setMessages([...messages, msg]);
+    websckt.onmessage = (event) => {
+      const message = {
+        message: JSON.parse(event.data),
+        author: "bot",
+      };
+      setMessages([...messages, message]);
+    };
 
-    e.target.value = "";
-    e.preventDefault();
     setMessage([]);
   };
 
@@ -51,13 +56,25 @@ function App() {
       <div className="chat-container">
         <div className="chat">
           {messages.map((value, index) => {
-            return (
-              <div key={index} className="my-message-container">
-                <div className="my-message">
-                  <p className="message">{value}</p>
+            if (value.author === "user") {
+              return (
+                <div key={index} className="my-message-container">
+                  <div className="my-message">
+                    {/* <p className="client">client id : {clientId}</p> */}
+                    <p className="message">{value.message}</p>
+                  </div>
                 </div>
-              </div>
-            );
+              );
+            } else {
+              return (
+                <div key={index} className="another-message-container">
+                  <div className="another-message">
+                    {/* <p className="client">client id : {clientId}</p> */}
+                    <p className="message">{value.message}</p>
+                  </div>
+                </div>
+              );
+            }
           })}
         </div>
         <div className="input-chat-container">

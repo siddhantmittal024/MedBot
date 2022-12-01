@@ -115,7 +115,7 @@
   width: fit-content;
   min-width: 100px;
   max-width: 300px;
-  background-color: rgb(77, 253, 215);
+  background-color: rgb(168, 77, 253);
   border: 1px solid black;
   box-shadow: 5px 5px;
   margin-top: 10px;
@@ -132,7 +132,7 @@
   max-width: 300px;
   padding: 5px;
   width: fit-content;
-  background-color: rgb(212, 253, 77);
+  background-color: rgb(253, 77, 77);
   border: 1px solid black;
   box-shadow: 5px 5px;
   margin-top: 10px;
