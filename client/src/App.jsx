@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { AiOutlineSend } from "react-icons/ai";
 
 import "./App.css";
 
@@ -52,9 +53,29 @@ function App() {
 
   return (
     <div className="container">
-      <h1>Chat</h1>
+      <div className="header-container">
+      <h1>MedBot</h1>
+      <div className="paragraphs">
+      <p>Medical ChatBot is an AI-driven chatbot that will help you answer your
+        basic medical queries. The chatbot can respond to your medical queries
+        only to the best of its knowledge graph base.</p>
+        <p> We have built a knowledge graph database of selected diseases, their
+        symptoms and description. These relationships are stored in a Neo4j
+        database, from where the results can be fetched.</p>
+        <p>
+        To understand user query, we make use of string matching algorithm, to
+        identify the patterns of type of question asked and fetch suitable
+        results.
+      </p>
+      </div>
+      </div>
+      
       <div className="chat-container">
         <div className="chat">
+            <div className="chat-header">
+          <div className="chat-title">MedBot</div>
+        </div>
+        <div className="chat-content">
           {messages.map((value, index) => {
             if (value.author === "user") {
               return (
@@ -76,6 +97,7 @@ function App() {
               );
             }
           })}
+          </div>
         </div>
         <div className="input-chat-container">
           <input
@@ -87,7 +109,7 @@ function App() {
           ></input>
 
           <button className="submit-chat" onClick={sendMessage}>
-            Send
+            <AiOutlineSend/>
           </button>
         </div>
       </div>
