@@ -17,45 +17,45 @@ from fastapi.middleware.cors import CORSMiddleware
 import json
 app = FastAPI()
 
-# html = """
-# <!DOCTYPE html>
-# <html>
-#     <head>
-#         <title>Chat</title>
-#     </head>
-#     <body>
-#         <h1>WebSocket Chat</h1>
-#         <form action="" onsubmit="sendMessage(event)">
-#             <input type="text" id="messageText" autocomplete="off"/>
-#             <button>Send</button>
-#         </form>
-#         <ul id='messages'>
+html = """
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Chat</title>
+    </head>
+    <body>
+        <h1>WebSocket Chat</h1>
+        <form action="" onsubmit="sendMessage(event)">
+            <input type="text" id="messageText" autocomplete="off"/>
+            <button>Send</button>
+        </form>
+        <ul id='messages'>
 
-#         </ul>
-#         <script>
-#             var ws = new WebSocket("ws://localhost:8000/ws");
-#             ws.onmessage = function(event) {
-#                 var messages = document.getElementById('messages')
-#                 var message = document.createElement('li')
-#                 var content = document.createTextNode(event.data)
-#                 message.appendChild(content)
-#                 messages.appendChild(message)
-#             };
-#             function sendMessage(event) {
-#                 var input = document.getElementById("messageText")
-#                 ws.send(input.value)
-#                 var messages = document.getElementById('messages')
-#                 var message = document.createElement('li')
-#                 var content = document.createTextNode(input.value)
-#                 message.appendChild(content)
-#                 messages.appendChild(message)
-#                 input.value = ''
-#                 event.preventDefault()
-#             }
-#         </script>
-#     </body>
-# </html>
-# """
+        </ul>
+        <script>
+            var ws = new WebSocket("ws://localhost:8000/ws");
+            ws.onmessage = function(event) {
+                var messages = document.getElementById('messages')
+                var message = document.createElement('li')
+                var content = document.createTextNode(event.data)
+                message.appendChild(content)
+                messages.appendChild(message)
+            };
+            function sendMessage(event) {
+                var input = document.getElementById("messageText")
+                ws.send(input.value)
+                var messages = document.getElementById('messages')
+                var message = document.createElement('li')
+                var content = document.createTextNode(input.value)
+                message.appendChild(content)
+                messages.appendChild(message)
+                input.value = ''
+                event.preventDefault()
+            }
+        </script>
+    </body>
+</html>
+"""
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -219,7 +219,7 @@ app.add_middleware(
 
 @app.get("/")
 async def get():
-    return "HOME"
+    return "hello"
 
 
 @app.websocket("/ws")
@@ -243,13 +243,19 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             symptom = await websocket.receive_text()
             conf, cnf_dis = check_pattern(chk_dis, symptom)
+            print(cnf_dis)
             if conf == 1:
                 await websocket.send_text(json.dumps("searches related to input"))
-                for num, it in enumerate(cnf_dis):
-                    await websocket.send_text(json.dumps("some text" + str(num)+ "." + (it)))
-                if num != 0:
-                    await websocket.send_text(json.dumps("Select the one you meant (0 - " + str(num) + "):"))
-                    conf_inp = await websocket.receive_text()
+                i = 0
+                for it in (cnf_dis):
+                    await websocket.send_text(json.dumps(it))
+                    i = i+1
+                    print(json.dumps(str(i-1)+'. '+(it)))
+
+                if i-1 != 0:
+                    # await websocket.send_text(json.dumps("Select the one you meant (0 - " + str(i-1) + "):"))
+                    # conf_inp = await websocket.receive_text()
+                    conf_inp = 1
                 else:
                     conf_inp = 0
 
@@ -259,6 +265,16 @@ async def websocket_endpoint(websocket: WebSocket):
 
             else:
                 await websocket.send_text(json.dumps("Enter valid symptom.."))
+
+        # while True:
+        #         if i-1 != 0:
+        #                 await websocket.send_text(json.dumps("Select the one you meant (0 - " + str(i-1) + "):"))
+        #                 conf_inp = await websocket.receive_text()
+        #         else:
+        #                 conf_inp = 0
+
+        #         symptom = cnf_dis[int(conf_inp)]
+        #         break
 
         await websocket.send_text(json.dumps("Okay. From how many days ? :"))
 
@@ -309,10 +325,11 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 second_prediction = sec_predict(symptoms_exp)
                 print(symptoms_exp)
-                await websocket.send_text((calc_condition(symptoms_exp, int(num_days))))
+                await websocket.send_text(json.dumps(calc_condition(symptoms_exp, int(num_days))))
                 if (present_disease[0] == second_prediction[0]):
                     await websocket.send_text(json.dumps("You may have " + present_disease[0]))
-                    # print(description_list[present_disease[0]])
+
+                    print(description_list[present_disease[0]])
                     await websocket.send_text(json.dumps(description_list[present_disease[0]]))
                 else:
                     await websocket.send_text(json.dumps("You may have " +
