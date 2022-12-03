@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import {AiOutlineSend} from "react-icons/ai";
+import { useState, useEffect, useRef } from "react";
+import { AiOutlineSend } from "react-icons/ai";
 
 import "./App.css";
 
@@ -7,6 +7,7 @@ function App() {
   const [message, setMessage] = useState([]);
   const [messages, setMessages] = useState([]);
   const [websckt, setWebsckt] = useState();
+  const bottomRef = useRef(null);
 
   useEffect(() => {
     const url = "ws://localhost:8000/ws";
@@ -16,7 +17,7 @@ function App() {
     //     message: JSON.parse(e.data),
     //     author: "bot",
     //   };
-    //   // console.log(message);
+       // console.log(message);
     //   setMessages([...messages, message]);
     // };
     setWebsckt(ws);
@@ -34,45 +35,81 @@ function App() {
     };
   }
 
-  console.log("ALL MESSAGES:", messages);
+  useEffect(() => {
+    // 👇️ scroll to bottom every time messages change
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+
   const sendMessage = () => {
     //const msg = message;
+    if (message != "") {
+      websckt.send(message);
 
-    websckt.send(message);
-
-    const msg = {
-      message: message,
-      author: "user",
-    };
-
-    setMessages([...messages, msg]);
-    console.log("ALL MESSAGES:", messages);
-
-    // recieve message every send message
-    websckt.onmessage = (event) => {
       const msg = {
-        message: JSON.parse(event.data),
-        author: "bot",
+        message: message,
+        author: "user",
       };
-      //console.log("recieved msg: ",  msg);
+
       setMessages([...messages, msg]);
-    };
+      console.log("ALL MESSAGES:", messages);
 
-    console.log("MESSAGE:", msg);
+      // recieve message every send message
+      websckt.onmessage = (event) => {
+        const msg = {
+          message: JSON.parse(event.data),
+          author: "bot",
+        };
+        //console.log("recieved msg: ",  msg);
+        setMessages([...messages, msg]);
+      };
 
-    setMessage([]);
+      console.log("MESSAGE:", msg);
+
+      setMessage([]);
+    } else {
+      alert("Message cannot be empty!");
+    }
   };
 
   return (
     <div className="container">
       <div className="header-container">
-        <h1>MedBot</h1>
+        <h1 style={{ "letter-spacing": "1px" }}>
+          MedBot
+          <span class="underlines">
+            <span className="underline" style={{ "margin-left": "0%" }}></span>
+            <span className="underline" style={{ "margin-left": "25%" }}></span>
+            <span className="underline" style={{ "margin-left": "50%" }}></span>
+            <span className="underline" style={{ "margin-left": "75%" }}></span>
+          </span>
+        </h1>
+        <div className="paragraphs">
+          <h2 style={{ "margin-top": "1em" }}>About</h2>
+          <p style={{ "margin-top": "0.5em" }}>
+            Medical ChatBot is an AI-driven chatbot that will help you answer
+            your basic medical queries. The chatbot can respond to your medical
+            queries only to the best of its knowledge graph base.
+          </p>
+          <h2 style={{ "margin-top": "1em" }}>Working</h2>
+          <p style={{ "margin-top": "0.5em" }}>
+            We have built a knowledge graph database of selected diseases, their
+            symptoms and description. These relationships are stored in a Neo4j
+            database, from where the results can be fetched.
+          </p>
+          <p style={{ "margin-top": "0.5em" }}>
+            To understand user query, we make use of string matching algorithm,
+            to identify the patterns of type of question asked and fetch
+            suitable results.
+          </p>
+        </div>
       </div>
+
       <div className="chat-container">
+        <div className="chat-header">
+          <div className="chat-title">MedBot</div>
+        </div>
         <div className="chat">
-          <div className="chat-header">
-            <div className="chat-title">MedBot</div>
-          </div>
           <div className="chat-content">
             {messages.map((value, index) => {
               if (value.author === "user") {
@@ -95,20 +132,21 @@ function App() {
                 );
               }
             })}
+            <div ref={bottomRef} />
           </div>
         </div>
         <div className="input-chat-container">
           <input
             className="input-chat"
             type="text"
-            placeholder="Chat message ..."
+            placeholder="Message"
             onChange={(e) => setMessage(e.target.value)}
             value={message}
           ></input>
 
-          <button className="submit-chat" onClick={sendMessage}>
-            <AiOutlineSend />
-          </button>
+          <div className="submit-chat" onClick={sendMessage}>
+            <AiOutlineSend style={{ marginTop: "4px" }} />
+          </div>
         </div>
       </div>
     </div>
