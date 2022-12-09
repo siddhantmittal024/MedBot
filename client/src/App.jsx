@@ -6,69 +6,48 @@ import "./App.css";
 function App() {
   const [message, setMessage] = useState([]);
   const [messages, setMessages] = useState([]);
-  const [websckt, setWebsckt] = useState();
+  const websckt = useRef(null);
   const bottomRef = useRef(null);
 
   useEffect(() => {
     const url = "ws://localhost:8000/ws";
     const ws = new WebSocket(url);
-    // ws.onmessage = (e) => {
-    //   const message = {
-    //     message: JSON.parse(e.data),
-    //     author: "bot",
-    //   };
-       // console.log(message);
-    //   setMessages([...messages, message]);
-    // };
-    setWebsckt(ws);
-    //return () => ws.close();
-  }, []);
-
-  if (websckt != undefined) {
-    websckt.onmessage = (e) => {
+    ws.onmessage = (e) => {
       const message = {
         message: JSON.parse(e.data),
         author: "bot",
       };
-      // console.log(message);
-      setMessages([...messages, message]);
+      setMessages((m) => [...m, message]);
     };
-  }
+    websckt.current = ws;
+    return () => ws.close();
+  }, []);
 
   useEffect(() => {
     // 👇️ scroll to bottom every time messages change
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-
   const sendMessage = () => {
     //const msg = message;
     if (message != "") {
-      websckt.send(message);
+      websckt.current.send(message);
 
       const msg = {
         message: message,
         author: "user",
       };
 
-      setMessages([...messages, msg]);
-      console.log("ALL MESSAGES:", messages);
-
-      // recieve message every send message
-      websckt.onmessage = (event) => {
-        const msg = {
-          message: JSON.parse(event.data),
-          author: "bot",
-        };
-        //console.log("recieved msg: ",  msg);
-        setMessages([...messages, msg]);
-      };
-
-      console.log("MESSAGE:", msg);
-
-      setMessage([]);
+      setMessages((m) => [...m, msg]);
+      setMessage("");
     } else {
       alert("Message cannot be empty!");
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      sendMessage();
     }
   };
 
@@ -141,6 +120,7 @@ function App() {
             type="text"
             placeholder="Message"
             onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={handleKeyDown}
             value={message}
           ></input>
 
