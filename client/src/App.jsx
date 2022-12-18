@@ -1,5 +1,11 @@
+import "regenerator-runtime/runtime";
 import { useState, useEffect, useRef } from "react";
 import { AiOutlineSend } from "react-icons/ai";
+import { MdMic } from "react-icons/md";
+import { createSpeechlySpeechRecognition } from "@speechly/speech-recognition-polyfill";
+import SpeechRecognition, {
+  useSpeechRecognition,
+} from "react-speech-recognition";
 
 import "./App.css";
 
@@ -8,6 +14,15 @@ function App() {
   const [messages, setMessages] = useState([]);
   const websckt = useRef(null);
   const bottomRef = useRef(null);
+  const [isActive, setIsActive] = useState(false);
+
+  const { transcript, listening, browserSupportsSpeechRecognition } =
+    useSpeechRecognition();
+  const startListening = () => SpeechRecognition.startListening();
+
+  if (!browserSupportsSpeechRecognition) {
+    return <span>Browser doesn't support speech recognition.</span>;
+  }
 
   useEffect(() => {
     const url = "ws://localhost:8000/ws";
@@ -30,7 +45,7 @@ function App() {
 
   const sendMessage = () => {
     //const msg = message;
-    if (message != "") {
+    if (message !== "") {
       websckt.current.send(message);
 
       const msg = {
@@ -66,20 +81,20 @@ function App() {
         <div className="paragraphs">
           <h2 style={{ "margin-top": "1em" }}>About</h2>
           <p style={{ "margin-top": "0.5em" }}>
-            Medical ChatBot is an AI-driven chatbot that will help you answer
-            your basic medical queries. The chatbot can respond to your medical
-            queries only to the best of its knowledge graph base.
+            MedBot is an AI-driven chatbot that will help you answer your basic
+            medical queries. The chatbot can respond to your medical queries
+            only to the best of its knowledge graph base.
           </p>
           <h2 style={{ "margin-top": "1em" }}>Working</h2>
           <p style={{ "margin-top": "0.5em" }}>
-            We have built a knowledge graph database of selected diseases, their
-            symptoms and description. These relationships are stored in a Neo4j
-            database, from where the results can be fetched.
+            It builds up a conversation by asking you follow-up questions
+            regarding the symptoms you are facing and then will return the final
+            predicted disease and precautions along with the description.
           </p>
+          <h2 style={{ "margin-top": "1em" }}>How to Use MedBot?</h2>
           <p style={{ "margin-top": "0.5em" }}>
-            To understand user query, we make use of string matching algorithm,
-            to identify the patterns of type of question asked and fetch
-            suitable results.
+            Users can simply input a symptom they face initially either by typing or by using the speech-to-text feature by 
+            simply speaking out the symptom name. Then the bot will ask further questions for which the user should answer accordingly.
           </p>
         </div>
       </div>
@@ -115,6 +130,35 @@ function App() {
           </div>
         </div>
         <div className="input-chat-container">
+          <MdMic
+            style={{
+              color: isActive ? "red" : "black",
+              margin: "auto",
+              height: "35px",
+              width: "32px",
+              cursor: "pointer",
+            }}
+            onTouchStart={() => {
+              startListening();
+              setIsActive(true);
+              setMessage("");
+            }}
+            onMouseDown={() => {
+              setIsActive(true);
+              startListening();
+              setMessage("");
+            }}
+            onTouchEnd={() => {
+              SpeechRecognition.stopListening;
+              setIsActive(false);
+              setMessage(transcript);
+            }}
+            onMouseUp={() => {
+              SpeechRecognition.stopListening;
+              setIsActive(false);
+              setMessage(transcript);
+            }}
+          />
           <input
             className="input-chat"
             type="text"
@@ -123,7 +167,6 @@ function App() {
             onKeyDown={handleKeyDown}
             value={message}
           ></input>
-
           <div className="submit-chat" onClick={sendMessage}>
             <AiOutlineSend style={{ marginTop: "4px" }} />
           </div>
